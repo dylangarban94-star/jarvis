@@ -43,8 +43,6 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg}'],
-        navigateFallback: 'index.html',
-        navigateFallbackDenylist: [/^\/__/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/api\.anthropic\.com\/.*/i,
