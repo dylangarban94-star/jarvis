@@ -135,6 +135,12 @@ body {
   animation: dot-pulse 1.2s ease-in-out infinite;
 }
 
+.glass-dot--processing {
+  background: var(--gold);
+  box-shadow: 0 0 9px var(--gold);
+  animation: dot-pulse 0.9s ease-in-out infinite;
+}
+
 .glass-dot--responding {
   background: var(--gold-bright);
   box-shadow: 0 0 10px var(--gold-bright);

@@ -6,92 +6,74 @@ export function useVoice() {
   const [voiceLevel, setVoiceLevel] = useState(0)
 
   const recognitionRef = useRef(null)
-  const audioCtxRef = useRef(null)
-  const streamRef = useRef(null)
   const animRef = useRef(null)
+  const timeRef = useRef(0)
 
-  const cleanup = useCallback(() => {
+  const stopAnimation = useCallback(() => {
     cancelAnimationFrame(animRef.current)
-    streamRef.current?.getTracks().forEach(t => t.stop())
-    streamRef.current = null
     setVoiceLevel(0)
   }, [])
 
-  const startListening = useCallback(async (onResult, onEnd) => {
+  const startListening = useCallback((onResult) => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SR) {
       console.error('SpeechRecognition no está soportado en este navegador')
       return
     }
 
-    // Mic access for real-time level visualization
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-      streamRef.current = stream
-
-      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
-        audioCtxRef.current = new AudioContext()
-      }
-      if (audioCtxRef.current.state === 'suspended') {
-        await audioCtxRef.current.resume()
-      }
-
-      const source = audioCtxRef.current.createMediaStreamSource(stream)
-      const analyser = audioCtxRef.current.createAnalyser()
-      analyser.fftSize = 256
-      source.connect(analyser)
-
-      const data = new Uint8Array(analyser.frequencyBinCount)
-      const tick = () => {
-        analyser.getByteFrequencyData(data)
-        const avg = data.reduce((a, b) => a + b, 0) / data.length
-        setVoiceLevel(avg / 255)
-        animRef.current = requestAnimationFrame(tick)
-      }
-      tick()
-    } catch (e) {
-      console.warn('Micrófono no disponible para visualización:', e.message)
-    }
-
     const recognition = new SR()
     recognition.lang = 'es-ES'
-    recognition.continuous = false
+    recognition.continuous = true   // keeps mic open until user finishes speaking
     recognition.interimResults = true
     recognition.maxAlternatives = 1
 
-    recognition.onstart = () => setIsListening(true)
+    recognition.onstart = () => {
+      setIsListening(true)
+      timeRef.current = 0
+      const tick = () => {
+        timeRef.current += 0.08
+        const t = timeRef.current
+        // Simulate voice activity on the sphere while listening
+        const level = 0.22 + Math.sin(t * 2.8) * 0.14 + Math.sin(t * 6.3) * 0.07
+        setVoiceLevel(Math.max(0, Math.min(1, level)))
+        animRef.current = requestAnimationFrame(tick)
+      }
+      tick()
+    }
 
     recognition.onresult = (event) => {
       const result = event.results[event.results.length - 1]
       const text = result[0].transcript
       setTranscript(text)
       if (result.isFinal && text.trim()) {
+        recognition.stop()
+        stopAnimation()
         onResult(text.trim())
       }
     }
 
     recognition.onerror = (event) => {
-      console.error('SpeechRecognition error:', event.error)
-      cleanup()
+      if (event.error !== 'no-speech') {
+        console.error('SpeechRecognition error:', event.error)
+      }
+      stopAnimation()
       setIsListening(false)
-      onEnd?.()
     }
 
     recognition.onend = () => {
-      cleanup()
+      stopAnimation()
       setIsListening(false)
-      onEnd?.()
     }
 
     recognitionRef.current = recognition
     recognition.start()
-  }, [cleanup])
+  }, [stopAnimation])
 
   const stopListening = useCallback(() => {
     recognitionRef.current?.stop()
-    cleanup()
+    stopAnimation()
     setIsListening(false)
-  }, [cleanup])
+  }, [stopAnimation])
 
   return { isListening, transcript, voiceLevel, startListening, stopListening }
 }

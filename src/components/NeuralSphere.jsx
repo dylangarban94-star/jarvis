@@ -143,7 +143,7 @@ export function NeuralSphere({ state = 'idle', audioLevel = 0, voiceLevel = 0 })
 
       // Color target
       if (state === 'listening') targetColor.copy(C_LISTEN)
-      else if (state === 'responding') targetColor.copy(C_RESPOND)
+      else if (state === 'responding' || state === 'processing') targetColor.copy(C_RESPOND)
       else targetColor.copy(C_IDLE)
 
       currentColor.lerp(targetColor, 0.045)
@@ -163,8 +163,8 @@ export function NeuralSphere({ state = 'idle', audioLevel = 0, voiceLevel = 0 })
       // Line opacity — denser when active
       lineMat.opacity = 0.14 + level * 0.18
 
-      // Core pulse
-      const pulseMult = state === 'responding' ? 7 : 3
+      // Core pulse — processing spins at mid speed between listening and responding
+      const pulseMult = state === 'responding' ? 7 : state === 'processing' ? 5 : 3
       const pulsed = 1 + Math.sin(time * pulseMult) * 0.07 + level * 0.22
       core.scale.setScalar(pulsed)
       coreMat.opacity = 0.10 + level * 0.28

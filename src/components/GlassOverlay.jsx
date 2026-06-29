@@ -1,6 +1,7 @@
 const STATUS_LABELS = {
   idle: 'En reposo',
   listening: 'Escuchando…',
+  processing: 'Procesando…',
   responding: 'Respondiendo…'
 }
 

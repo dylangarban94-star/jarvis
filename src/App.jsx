@@ -32,7 +32,7 @@ export default function App() {
     setTranscript(text)
     setResponse('')
     setError('')
-    setState('responding')
+    setState('processing')
 
     try {
       const context = await fetchContext(text)
