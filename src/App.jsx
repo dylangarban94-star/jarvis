@@ -6,7 +6,6 @@ import { useVoice } from './hooks/useVoice'
 import { useAudio } from './hooks/useAudio'
 import { useObsidian } from './hooks/useObsidian'
 import { askClaude } from './services/claude'
-import { textToSpeech } from './services/elevenlabs'
 import './App.css'
 
 export default function App() {
@@ -40,8 +39,7 @@ export default function App() {
       const reply = await askClaude(text, context)
       setResponse(reply)
 
-      const audioUrl = await textToSpeech(reply)
-      await playAudio(audioUrl)
+      await playAudio(reply)
     } catch (err) {
       console.error('Pipeline error:', err)
       setError('Hubo un error en el sistema. Intente de nuevo, Señor.')

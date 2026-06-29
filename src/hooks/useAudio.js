@@ -1,70 +1,41 @@
 import { useState, useCallback, useRef } from 'react'
+import { speak, stopSpeaking } from '../services/speech'
 
 export function useAudio() {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [audioLevel, setAudioLevel] = useState(0)
-
-  const audioCtxRef = useRef(null)
   const animRef = useRef(null)
-  const sourceRef = useRef(null)
+  const timeRef = useRef(0)
 
   const stop = useCallback(() => {
-    sourceRef.current?.stop()
+    stopSpeaking()
     cancelAnimationFrame(animRef.current)
     setIsSpeaking(false)
     setAudioLevel(0)
   }, [])
 
-  const playAudio = useCallback((blobUrl) => {
-    return new Promise(async (resolve, reject) => {
-      try {
-        if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
-          audioCtxRef.current = new AudioContext()
-        }
-        if (audioCtxRef.current.state === 'suspended') {
-          await audioCtxRef.current.resume()
-        }
+  // Speech Synthesis doesn't expose audio data, so we simulate
+  // a reactive level for the sphere animation
+  const playAudio = useCallback(async (text) => {
+    setIsSpeaking(true)
+    timeRef.current = 0
 
-        const res = await fetch(blobUrl)
-        const arrayBuffer = await res.arrayBuffer()
-        const audioBuffer = await audioCtxRef.current.decodeAudioData(arrayBuffer)
+    const tick = () => {
+      timeRef.current += 0.07
+      const t = timeRef.current
+      const level = 0.28 + Math.sin(t * 3.1) * 0.18 + Math.sin(t * 7.3) * 0.08 + (Math.random() * 0.06)
+      setAudioLevel(Math.max(0, Math.min(1, level)))
+      animRef.current = requestAnimationFrame(tick)
+    }
+    tick()
 
-        const source = audioCtxRef.current.createBufferSource()
-        source.buffer = audioBuffer
-        sourceRef.current = source
-
-        const analyser = audioCtxRef.current.createAnalyser()
-        analyser.fftSize = 256
-
-        source.connect(analyser)
-        analyser.connect(audioCtxRef.current.destination)
-
-        setIsSpeaking(true)
-
-        const data = new Uint8Array(analyser.frequencyBinCount)
-        const tick = () => {
-          analyser.getByteFrequencyData(data)
-          const avg = data.reduce((a, b) => a + b, 0) / data.length
-          setAudioLevel(avg / 255)
-          animRef.current = requestAnimationFrame(tick)
-        }
-        tick()
-
-        source.onended = () => {
-          cancelAnimationFrame(animRef.current)
-          setIsSpeaking(false)
-          setAudioLevel(0)
-          URL.revokeObjectURL(blobUrl)
-          resolve()
-        }
-
-        source.start(0)
-      } catch (err) {
-        setIsSpeaking(false)
-        setAudioLevel(0)
-        reject(err)
-      }
-    })
+    try {
+      await speak(text)
+    } finally {
+      cancelAnimationFrame(animRef.current)
+      setIsSpeaking(false)
+      setAudioLevel(0)
+    }
   }, [])
 
   return { isSpeaking, audioLevel, playAudio, stop }
